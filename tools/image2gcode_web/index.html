@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Image → G-code (Pen Plotter)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 16px;
+        }
+
+        .row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            border: 1px solid #ccc;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        canvas {
+            border: 1px solid #ddd;
+            max-width: 100%;
+        }
+
+        textarea {
+            width: 100%;
+            height: 240px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+
+        label {
+            display: block;
+            margin: 6px 0 2px;
+        }
+
+        input[type="number"] {
+            width: 120px;
+        }
+
+        button {
+            margin: 4px 8px 4px 0;
+        }
+
+        .muted {
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Image → G-code (Pen Plotter)</h2>
+    <p class="muted">Upload an image (PNG/JPG/SVG), trace to vector paths, generate G-code (with M67 servo up/down), and
+        send to your ESP32 over Web Serial.</p>
+    <div class="row">
+        <div class="card">
+            <label>Upload image (PNG/JPG/SVG):</label>
+            <input id="file" type="file" accept=".png,.jpg,.jpeg,.svg,image/*" />
+            <label>Threshold (0..255): <span id="thVal">180</span></label>
+            <input id="threshold" type="range" min="0" max="255" value="180" />
+            <label><input id="invert" type="checkbox" /> Invert</label>
+            <label>Output width (mm):</label>
+            <input id="widthMM" type="number" value="100" step="1" />
+            <label>Curve tolerance (mm):</label>
+            <input id="tolerance" type="number" value="0.5" step="0.1" />
+            <label>Hatch fill (mm spacing, leave 0 for outline only):</label>
+            <input id="hatch" type="number" value="0" step="0.2" />
+            <hr />
+            <label>Feed (draw) F mm/min:</label>
+            <input id="feed" type="number" value="1200" step="50" />
+            <label>Rapid (travel) F mm/min:</label>
+            <input id="rapid" type="number" value="3000" step="50" />
+            <label>Pen up M67 E0 Q:</label>
+            <input id="penUp" type="number" value="5" step="0.1" />
+            <label>Pen down M67 E0 Q:</label>
+            <input id="penDown" type="number" value="10" step="0.1" />
+            <label>Dwell after up (s):</label>
+            <input id="dwellUp" type="number" value="0.15" step="0.05" />
+            <label>Dwell after down (s):</label>
+            <input id="dwellDown" type="number" value="0.2" step="0.05" />
+            <div style="margin-top:8px;">
+                <button id="btnTrace">Trace → Paths</button>
+                <button id="btnGcode">Generate G-code</button>
+                <button id="btnSave">Save .gcode</button>
+            </div>
+        </div>
+        <div class="card">
+            <h4>Preview</h4>
+            <canvas id="canvas" width="512" height="512"></canvas>
+            <div class="muted"><small>Preview is approximate (scaled to fit canvas).</small></div>
+        </div>
+        <div class="card" style="flex:1 1 420px;">
+            <h4>G-code</h4>
+            <div style="margin-bottom:8px;">
+                <button id="btnConnect">Connect Serial</button>
+                <button id="btnSend">Send to ESP32</button>
+                <button id="btnAbort">Abort</button>
+            </div>
+            <textarea id="gcode"></textarea>
+            <div id="log"
+                style="white-space:pre; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border-top:1px solid #eee; margin-top:8px; padding-top:8px; max-height:200px; overflow:auto;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Optional: local Potrace bundle for higher fidelity raster tracing.
+         Place potrace.min.js in ./vendor/ and uncomment the next line to load it (offline, no CORS): -->
+    <!-- <script src="./vendor/potrace.min.js"></script> -->
+    <script src="./app.js"></script>
+</body>
+
+</html>

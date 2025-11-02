@@ -101,6 +101,30 @@
                 <button id="btnSend">Send to ESP32</button>
                 <button id="btnAbort">Abort</button>
             </div>
+            <div class="card" style="margin-bottom:8px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <button id="btnSetZero">Set Zero (G92 X0 Y0)</button>
+                    <button id="btnGotoZero">Go To Zero</button>
+                    <button id="btnPenUp">Pen Up</button>
+                    <button id="btnPenDown">Pen Down</button>
+                    <label>Jog step (mm): <input id="jogStep" type="number" value="5" step="0.5"
+                            style="width:80px;"></label>
+                    <label>Jog feed (mm/min): <input id="jogFeed" type="number" value="2000" step="50"
+                            style="width:100px;"></label>
+                </div>
+                <div
+                    style="margin-top:6px; display:grid; grid-template-columns:60px 60px 60px; grid-gap:4px; width:max-content;">
+                    <div></div>
+                    <button id="btnJogYPlus">Y+</button>
+                    <div></div>
+                    <button id="btnJogXMinus">X-</button>
+                    <div></div>
+                    <button id="btnJogXPlus">X+</button>
+                    <div></div>
+                    <button id="btnJogYMinus">Y-</button>
+                    <div></div>
+                </div>
+            </div>
             <textarea id="gcode"></textarea>
             <div id="log"
                 style="white-space:pre; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; border-top:1px solid #eee; margin-top:8px; padding-top:8px; max-height:200px; overflow:auto;">

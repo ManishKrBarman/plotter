@@ -27,6 +27,17 @@ const els = {
     btnSend: document.getElementById('btnSend'),
     btnAbort: document.getElementById('btnAbort'),
     log: document.getElementById('log'),
+    // quick controls
+    btnSetZero: document.getElementById('btnSetZero'),
+    btnGotoZero: document.getElementById('btnGotoZero'),
+    btnPenUp: document.getElementById('btnPenUp'),
+    btnPenDown: document.getElementById('btnPenDown'),
+    jogStep: document.getElementById('jogStep'),
+    jogFeed: document.getElementById('jogFeed'),
+    btnJogXMinus: document.getElementById('btnJogXMinus'),
+    btnJogXPlus: document.getElementById('btnJogXPlus'),
+    btnJogYPlus: document.getElementById('btnJogYPlus'),
+    btnJogYMinus: document.getElementById('btnJogYMinus'),
 };
 
 let potraceReady = false;
@@ -35,6 +46,7 @@ let lastDims = { widthMM: 0, heightMM: 0 };
 let serialPort = null;
 let serialWriter = null;
 let abortFlag = false;
+let streaming = false; // guard against concurrent send
 
 els.threshold.addEventListener('input', () => {
     els.thVal.textContent = els.threshold.value;
@@ -514,6 +526,7 @@ async function connectSerial() {
 async function sendGcode() {
     if (!serialWriter) return alert('Connect Serial first');
     if (!els.gcode.value) return alert('No G-code to send');
+    if (streaming) return alert('Already streaming');
     abortFlag = false;
     const lines = els.gcode.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     // Simple streaming with 'ok' wait
@@ -524,6 +537,7 @@ async function sendGcode() {
     log('Streaming G-code...');
     // Wake up GRBL
     await serialWriter.write("\r\n");
+    streaming = true;
     function waitForOk() {
         return new Promise(async (resolve) => {
             while (true) {
@@ -543,6 +557,7 @@ async function sendGcode() {
         await serialWriter.write(l + '\n');
         await waitForOk();
     }
+    streaming = false;
     log(abortFlag ? 'Aborted' : 'Done');
 }
 
@@ -556,3 +571,73 @@ function abortSend() {
 els.btnConnect.addEventListener('click', connectSerial);
 els.btnSend.addEventListener('click', sendGcode);
 els.btnAbort.addEventListener('click', abortSend);
+
+// ---- Quick controls ----
+function getPenValues() {
+    return {
+        up: +els.penUp.value || 5,
+        down: +els.penDown.value || 10,
+        dwellUp: +els.dwellUp.value || 0.15,
+        dwellDown: +els.dwellDown.value || 0.2,
+    };
+}
+
+async function sendSeq(cmds) {
+    if (!serialWriter) return alert('Connect Serial first');
+    if (streaming) return alert('Busy streaming');
+    const reader = serialPort.readable
+        .pipeThrough(new TextDecoderStream())
+        .getReader();
+    function waitForOk() {
+        return new Promise(async (resolve) => {
+            while (true) {
+                const { value } = await reader.read();
+                if (!value) continue;
+                const s = value.toString();
+                if (s.trim()) log(s.trim());
+                if (s.includes('ok') || s.includes('error')) { resolve(); break; }
+            }
+        });
+    }
+    // wake
+    await serialWriter.write("\r\n");
+    for (const c of cmds) {
+        await serialWriter.write(c + "\n");
+        await waitForOk();
+    }
+}
+
+els.btnSetZero?.addEventListener('click', async () => {
+    try { await sendSeq(['G92 X0 Y0']); log('Zero set (X0 Y0)'); } catch (e) { /* logged in sendSeq */ }
+});
+
+els.btnGotoZero?.addEventListener('click', async () => {
+    const rapid = +els.rapid.value || 3000;
+    try { await sendSeq(['G90', `G0 X0 Y0 F${rapid}`]); } catch (e) { }
+});
+
+els.btnPenUp?.addEventListener('click', async () => {
+    const { up, dwellUp } = getPenValues();
+    try { await sendSeq([`M67 E0 Q${up.toFixed(3)}`, `G4 S${dwellUp.toFixed(3)}`]); } catch (e) { }
+});
+
+els.btnPenDown?.addEventListener('click', async () => {
+    const { down, dwellDown } = getPenValues();
+    try { await sendSeq([`M67 E0 Q${down.toFixed(3)}`, `G4 S${dwellDown.toFixed(3)}`]); } catch (e) { }
+});
+
+async function jog(dx, dy) {
+    if (!serialWriter) return alert('Connect Serial first');
+    if (streaming) return alert('Busy streaming');
+    const step = +els.jogStep.value || 1;
+    const feed = +els.jogFeed.value || 2000;
+    const x = (dx * step).toFixed(3);
+    const y = (dy * step).toFixed(3);
+    const cmds = ['G91', `G0 X${dx ? x : 0} Y${dy ? y : 0} F${feed}`, 'G90'];
+    try { await sendSeq(cmds); } catch (e) { }
+}
+
+els.btnJogXMinus?.addEventListener('click', () => jog(-1, 0));
+els.btnJogXPlus?.addEventListener('click', () => jog(1, 0));
+els.btnJogYPlus?.addEventListener('click', () => jog(0, 1));
+els.btnJogYMinus?.addEventListener('click', () => jog(0, -1));

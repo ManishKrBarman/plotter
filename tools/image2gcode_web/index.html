@@ -102,6 +102,18 @@
                 <button id="btnAbort">Abort</button>
             </div>
             <div class="card" style="margin-bottom:8px;">
+                <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center;">
+                    <div>Progress: <span id="lblProgress">0/0</span></div>
+                    <div>State: <span id="lblState">-</span></div>
+                    <div>Pos: <span id="lblPos">X0.000 Y0.000</span></div>
+                    <div>Feed: <span id="lblFeed">0</span></div>
+                </div>
+                <div
+                    style="margin-top:6px; width:100%; max-width:480px; height:10px; background:#eee; border-radius:6px; overflow:hidden;">
+                    <div id="progressBar" style="height:100%; width:0%; background:#4caf50;"></div>
+                </div>
+            </div>
+            <div class="card" style="margin-bottom:8px;">
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                     <button id="btnSetZero">Set Zero (G92 X0 Y0)</button>
                     <button id="btnGotoZero">Go To Zero</button>

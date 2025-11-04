@@ -538,24 +538,61 @@ async function sendGcode() {
     // Wake up GRBL
     await serialWriter.write("\r\n");
     streaming = true;
+    // Progress tracking UI
+    const total = queue.length;
+    let done = 0;
+    const bar = document.getElementById('progressBar');
+    const lblProgress = document.getElementById('lblProgress');
+    const lblState = document.getElementById('lblState');
+    const lblPos = document.getElementById('lblPos');
+    const lblFeed = document.getElementById('lblFeed');
+    function setProgress() {
+        const pct = total ? Math.round((done / total) * 100) : 0;
+        if (bar) bar.style.width = pct + '%';
+        if (lblProgress) lblProgress.textContent = `${done}/${total}`;
+    }
+    setProgress();
+
+    function parseStatusLine(line) {
+        if (!line || line[0] !== '<') return;
+        // Typical: <Run|MPos:1.000,2.000,0.000|FS:1200,0>
+        const m = line.match(/^<([^|>]+)[|>]/);
+        const state = m ? m[1] : '-';
+        const mpos = line.match(/MPos:([\-0-9.]+),([\-0-9.]+)(?:,([\-0-9.]+))?/);
+        const fs = line.match(/FS:([\-0-9.]+)/);
+        if (lblState) lblState.textContent = state;
+        if (lblPos && mpos) lblPos.textContent = `X${(+mpos[1]).toFixed(3)} Y${(+mpos[2]).toFixed(3)}`;
+        if (lblFeed && fs) lblFeed.textContent = fs[1];
+    }
+
     function waitForOk() {
         return new Promise(async (resolve) => {
             while (true) {
                 const { value } = await reader.read();
                 if (!value) continue;
                 const s = value.toString();
-                if (s.trim()) log(s.trim());
-                if (s.includes('ok') || s.includes('error')) {
-                    resolve();
-                    break;
+                const lines = s.split(/\r?\n/);
+                for (const lineRaw of lines) {
+                    const line = lineRaw.trim();
+                    if (!line) continue;
+                    log(line);
+                    parseStatusLine(line);
+                    if (line.includes('ok') || line.includes('error')) {
+                        resolve();
+                        return;
+                    }
                 }
             }
         });
     }
     while (queue.length && !abortFlag) {
         const l = queue.shift();
+        // query status to refresh UI frequently (no 'ok' returned for '?')
+        try { await serialWriter.write('?' + '\n'); } catch (e) { /* ignore */ }
         await serialWriter.write(l + '\n');
         await waitForOk();
+        done++;
+        setProgress();
     }
     streaming = false;
     log(abortFlag ? 'Aborted' : 'Done');
